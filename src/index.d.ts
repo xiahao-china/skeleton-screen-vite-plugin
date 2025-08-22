@@ -46,4 +46,6 @@ interface SkeletonScreenOptions {
  */
 declare function skeletonScreenPlugin(options?: Partial<SkeletonScreenOptions>): Plugin;
 
-export default skeletonScreenPlugin;
+export {
+  skeletonScreenPlugin
+};
