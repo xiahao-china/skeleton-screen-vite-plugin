@@ -1,0 +1,28 @@
+{
+  "name": "skeleton-screen-vite-plugin",
+  "version": "0.0.1",
+  "description": "",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "puppeteer": "^21.11.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.3",
+    "vite": "^4.5.0",
+    "@types/node": "^20.5.0",
+    "@types/puppeteer": "^7.0.4"
+  },
+  "private": false,
+  "keywords": [
+    "vite",
+    "vite-plugin",
+    "skeleton-screen",
+    "vue3",
+    "puppeteer"
+  ],
+  "author": "",
+  "license": "MIT"
+}
