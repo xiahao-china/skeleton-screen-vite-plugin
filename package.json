@@ -1,11 +1,17 @@
 {
   "name": "skeleton-screen-vite-plugin",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "",
   "main": "dist/index.js",
-  "types": "src/index.d.ts",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "scripts": {
-    "build": "tsc"
+    "build": "tsc && copy .\\src\\index.d.ts .\\dist\\index.d.ts"
   },
   "dependencies": {
     "puppeteer": "^21.11.0"
@@ -16,6 +22,9 @@
     "@types/node": "^20.5.0",
     "@types/puppeteer": "^7.0.4"
   },
+  "files": [
+    "dist"
+  ],
   "private": false,
   "keywords": [
     "vite",
