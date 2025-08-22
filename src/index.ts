@@ -147,7 +147,7 @@ function injectSkeletonToHtml(
 }
 
 // 插件入口
-export default function skeletonScreenPlugin(options: Partial<SkeletonScreenOptions> = {}): Plugin {
+export function skeletonScreenPlugin(options: Partial<SkeletonScreenOptions> = {}): Plugin {
   const pluginOptions: SkeletonScreenOptions = { ...defaultOptions, ...options };
   let config: ResolvedConfig;
   
