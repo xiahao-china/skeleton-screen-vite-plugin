@@ -17,3 +17,5 @@ export const defaultOptions: SkeletonScreenOptions = {
     routerPath: 'src/router/index.ts',
     skeletonClass: 'skeleton-screen'
 };
+
+export const DEFAULT_PORT = 5002;

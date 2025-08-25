@@ -1,6 +1,6 @@
 {
   "name": "skeleton-screen-vite-plugin",
-  "version": "0.0.6",
+  "version": "0.0.35",
   "description": "",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -11,16 +11,22 @@
     }
   },
   "scripts": {
-    "build": "tsc && copy .\\src\\index.d.ts .\\dist\\index.d.ts"
+    "build": "tsc",
+    "postinstall": "puppeteer browsers install chrome",
+    "pub": "pnpm run build && pnpm publish --no-git-checks"
   },
   "dependencies": {
-    "puppeteer": "^21.11.0"
+    "@puppeteer/browsers": "^2.10.7",
+    "@types/serve-handler": "^6.1.4",
+    "puppeteer": "^21.11.0",
+    "serve-handler": "^6.1.6"
   },
   "devDependencies": {
-    "typescript": "^5.5.3",
-    "vite": "^4.5.0",
     "@types/node": "^20.5.0",
-    "@types/puppeteer": "^7.0.4"
+    "@types/puppeteer": "^7.0.4",
+    "@types/semver": "^7.7.0",
+    "typescript": "^5.5.3",
+    "vite": "^4.5.0"
   },
   "files": [
     "dist"

@@ -2,9 +2,11 @@ import type { Plugin, ResolvedConfig } from 'vite';
 import { launch } from 'puppeteer';
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { executablePath } from 'puppeteer';
 
-import { defaultOptions, type SkeletonScreenOptions } from './const';
+import {DEFAULT_PORT, defaultOptions, type SkeletonScreenOptions} from './const';
+import { checkChromeAndInstall } from './envPreCheck';
+import {startStaticServer} from "./pageServer";
 
 
 
@@ -26,16 +28,19 @@ async function parseRoutes(routerFilePath: string): Promise<string[]> {
 async function generateSkeletonScreens(
   routes: string[],
   options: SkeletonScreenOptions,
-  config: ResolvedConfig
 ): Promise<Record<string, string>> {
-  const browser = await launch({ headless: 'new', ...options.puppeteerOptions });
+  const browser = await launch({
+    headless: 'new',
+    ...options.puppeteerOptions,
+    executablePath: executablePath()  // 使用 puppeteer 自带的 Chrome
+  });
   const page = await browser.newPage();
   const skeletonScreens: Record<string, string> = {};
-  const baseUrl = `http://localhost:${config.server.port || 5173}`;
+  const baseUrl = `http://localhost:${DEFAULT_PORT}`;
 
   try {
     for (const route of routes) {
-      console.log(`Generating skeleton screen for route: ${route}`);
+      console.log(`Generating skeleton screen for: ${route}`);
       await page.goto(`${baseUrl}${route}`, { waitUntil: 'networkidle0' });
       await page.waitForTimeout(options.delay || 2000);
 
@@ -70,6 +75,7 @@ async function generateSkeletonScreens(
 
       // 截图并转换为base64
       const screenshot = await page.screenshot({ type: 'png', encoding: 'base64' });
+      console.log(`route ${route}: ${screenshot}`);
       skeletonScreens[route] = screenshot;
     }
   } finally {
@@ -147,16 +153,16 @@ function injectSkeletonToHtml(
 }
 
 // 插件入口
-export default function (options: Partial<SkeletonScreenOptions> = {}): Plugin {
+export function init (options: Partial<SkeletonScreenOptions> = {}): Plugin {
   const pluginOptions: SkeletonScreenOptions = { ...defaultOptions, ...options };
   let config: ResolvedConfig;
-  
+
   return {
     name: 'vite-plugin-skeleton-screen',
     configResolved(resolvedConfig) {
       config = resolvedConfig;
     },
-    async buildEnd() {
+    async closeBundle() {
       // 解析路由
       const routes = pluginOptions.routes.length > 0
         ? pluginOptions.routes 
@@ -167,19 +173,24 @@ export default function (options: Partial<SkeletonScreenOptions> = {}): Plugin {
         return;
       }
 
-      console.log('routes',routes);
-      
-      // // 生成骨架屏
-      // const skeletonScreens = await generateSkeletonScreens(routes, pluginOptions, config);
-      //
-      // // 注入到HTML
-      // const htmlPath = path.resolve(config.build.outDir, 'index.html');
-      // if (fs.existsSync(htmlPath)) {
-      //   injectSkeletonToHtml(htmlPath, skeletonScreens, pluginOptions);
-      //   console.log('Skeleton screens injected into index.html');
-      // } else {
-      //   console.error('index.html not found in output directory');
-      // }
+      await checkChromeAndInstall();
+
+      console.log('outDir', config.build.outDir);
+      const server = await startStaticServer(config.build.outDir, DEFAULT_PORT);
+
+      // 生成骨架屏
+      const skeletonScreens = await generateSkeletonScreens(routes, pluginOptions);
+
+      server.close();
+
+      // 注入到HTML
+      const htmlPath = path.resolve(config.build.outDir, 'index.html');
+      if (fs.existsSync(htmlPath)) {
+        injectSkeletonToHtml(htmlPath, skeletonScreens, pluginOptions);
+        console.log('Skeleton screens injected into index.html');
+      } else {
+        console.error('index.html not found in output directory');
+      }
     }
   };
 }

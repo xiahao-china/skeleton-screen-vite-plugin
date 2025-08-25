@@ -12,11 +12,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.skeletonScreenPlugin = skeletonScreenPlugin;
+exports.init = init;
 const puppeteer_1 = require("puppeteer");
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
+const puppeteer_2 = require("puppeteer");
 const const_1 = require("./const");
+const envPreCheck_1 = require("./envPreCheck");
+const pageServer_1 = require("./pageServer");
 // 解析Vue路由配置文件
 function parseRoutes(routerFilePath) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -33,15 +36,16 @@ function parseRoutes(routerFilePath) {
     });
 }
 // 使用Puppeteer生成骨架屏图片
-function generateSkeletonScreens(routes, options, config) {
+function generateSkeletonScreens(routes, options) {
     return __awaiter(this, void 0, void 0, function* () {
-        const browser = yield (0, puppeteer_1.launch)(Object.assign({ headless: 'new' }, options.puppeteerOptions));
+        const browser = yield (0, puppeteer_1.launch)(Object.assign(Object.assign({ headless: 'new' }, options.puppeteerOptions), { executablePath: (0, puppeteer_2.executablePath)() // 使用 puppeteer 自带的 Chrome
+         }));
         const page = yield browser.newPage();
         const skeletonScreens = {};
-        const baseUrl = `http://localhost:${config.server.port || 5173}`;
+        const baseUrl = `http://localhost:${const_1.DEFAULT_PORT}`;
         try {
             for (const route of routes) {
-                console.log(`Generating skeleton screen for route: ${route}`);
+                console.log(`Generating skeleton screen for: ${route}`);
                 yield page.goto(`${baseUrl}${route}`, { waitUntil: 'networkidle0' });
                 yield page.waitForTimeout(options.delay || 2000);
                 // 添加骨架屏样式
@@ -72,6 +76,7 @@ function generateSkeletonScreens(routes, options, config) {
                 }, options.skeletonClass);
                 // 截图并转换为base64
                 const screenshot = yield page.screenshot({ type: 'png', encoding: 'base64' });
+                console.log(`route ${route}: ${screenshot}`);
                 skeletonScreens[route] = screenshot;
             }
         }
@@ -137,7 +142,7 @@ function injectSkeletonToHtml(htmlPath, skeletonScreens, options) {
     fs_1.default.writeFileSync(htmlPath, htmlContent);
 }
 // 插件入口
-function skeletonScreenPlugin(options = {}) {
+function init(options = {}) {
     const pluginOptions = Object.assign(Object.assign({}, const_1.defaultOptions), options);
     let config;
     return {
@@ -145,7 +150,7 @@ function skeletonScreenPlugin(options = {}) {
         configResolved(resolvedConfig) {
             config = resolvedConfig;
         },
-        buildEnd() {
+        closeBundle() {
             return __awaiter(this, void 0, void 0, function* () {
                 var _a;
                 // 解析路由
@@ -156,18 +161,21 @@ function skeletonScreenPlugin(options = {}) {
                     console.warn('No routes found for skeleton screen generation');
                     return;
                 }
-                console.log('routes', routes);
-                // // 生成骨架屏
-                // const skeletonScreens = await generateSkeletonScreens(routes, pluginOptions, config);
-                //
-                // // 注入到HTML
-                // const htmlPath = path.resolve(config.build.outDir, 'index.html');
-                // if (fs.existsSync(htmlPath)) {
-                //   injectSkeletonToHtml(htmlPath, skeletonScreens, pluginOptions);
-                //   console.log('Skeleton screens injected into index.html');
-                // } else {
-                //   console.error('index.html not found in output directory');
-                // }
+                yield (0, envPreCheck_1.checkChromeAndInstall)();
+                console.log('outDir', config.build.outDir);
+                const server = yield (0, pageServer_1.startStaticServer)(config.build.outDir, const_1.DEFAULT_PORT);
+                // 生成骨架屏
+                const skeletonScreens = yield generateSkeletonScreens(routes, pluginOptions);
+                server.close();
+                // 注入到HTML
+                const htmlPath = path_1.default.resolve(config.build.outDir, 'index.html');
+                if (fs_1.default.existsSync(htmlPath)) {
+                    injectSkeletonToHtml(htmlPath, skeletonScreens, pluginOptions);
+                    console.log('Skeleton screens injected into index.html');
+                }
+                else {
+                    console.error('index.html not found in output directory');
+                }
             });
         }
     };

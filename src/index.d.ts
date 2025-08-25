@@ -44,7 +44,7 @@ interface SkeletonScreenOptions {
  * @param options 插件配置选项
  * @returns Vite插件对象
  */
-declare function skeletonScreenPlugin(options?: Partial<SkeletonScreenOptions>): Plugin;
+declare function init(options?: Partial<SkeletonScreenOptions>): Plugin;
 
-export { skeletonScreenPlugin as default };
+export { init };
 
