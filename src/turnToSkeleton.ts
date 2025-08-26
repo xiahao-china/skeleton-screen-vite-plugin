@@ -11,11 +11,11 @@ export async function compressBase64WithJimp(dataUrl: string, maxW=480, maxH=270
     img.resize({
         w: maxW,
         h: maxH,
-        mode: ResizeStrategy.BILINEAR
+        mode: ResizeStrategy.NEAREST_NEIGHBOR
     });
 
-    const buf = img.getBase64("image/png");
-    return `data:image/png;base64,${buf}`;
+    const buf = await img.getBase64("image/png");
+    return buf;
 }
 
 export async function startTurnToSkeleton(page: Page){
@@ -61,7 +61,7 @@ export async function startTurnToSkeleton(page: Page){
             // 删除超出视窗的元素
             const elements = document.querySelectorAll('*');
             elements.forEach(el => {
-                if (el.getBoundingClientRect().top > window.innerHeight) {
+                if (el.getBoundingClientRect().top > window.innerHeight || window.getComputedStyle(el).position === 'fixed') {
                     el.remove();
                 }
             });
@@ -73,7 +73,7 @@ export async function startTurnToSkeleton(page: Page){
                     Array.from(el.childNodes).forEach(child => {
                         if (child instanceof HTMLElement) {
                             traverse(child, depth - 1);
-                        } else if(child instanceof Text && child.textContent.length){
+                        } else if(child instanceof Text && child.textContent.replace(/\s+/g, '').length){
                             handleTextNode(child);
                         }else{
                             child.remove();

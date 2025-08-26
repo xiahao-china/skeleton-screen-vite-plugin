@@ -20,10 +20,10 @@ function compressBase64WithJimp(dataUrl_1) {
         img.resize({
             w: maxW,
             h: maxH,
-            mode: jimp_1.ResizeStrategy.BILINEAR
+            mode: jimp_1.ResizeStrategy.NEAREST_NEIGHBOR
         });
-        const buf = img.getBase64("image/png");
-        return `data:image/png;base64,${buf}`;
+        const buf = yield img.getBase64("image/png");
+        return buf;
     });
 }
 function startTurnToSkeleton(page) {
@@ -68,7 +68,7 @@ function startTurnToSkeleton(page) {
                 // 删除超出视窗的元素
                 const elements = document.querySelectorAll('*');
                 elements.forEach(el => {
-                    if (el.getBoundingClientRect().top > window.innerHeight) {
+                    if (el.getBoundingClientRect().top > window.innerHeight || window.getComputedStyle(el).position === 'fixed') {
                         el.remove();
                     }
                 });
@@ -81,7 +81,7 @@ function startTurnToSkeleton(page) {
                             if (child instanceof HTMLElement) {
                                 traverse(child, depth - 1);
                             }
-                            else if (child instanceof Text && child.textContent.length) {
+                            else if (child instanceof Text && child.textContent.replace(/\s+/g, '').length) {
                                 handleTextNode(child);
                             }
                             else {

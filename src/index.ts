@@ -64,8 +64,6 @@ async function generateSkeletonScreens(
 
 function saveSkeletonScreens(skeletonScreens: Record<string, string>, outputDir: string) {
   Object.entries(skeletonScreens).forEach(([route, base64]) => {
-    // base64压缩
-    // const compressedBase64 = compress(base64);
     const filePath = path.join(outputDir, `${route.replace('/', 'skeleton-screen-')}.png`);
     fs.writeFileSync(filePath, base64, 'base64');
   });
@@ -139,9 +137,10 @@ export function init (options: Partial<SkeletonScreenOptions> = {}): Plugin {
         const outputDir = path.resolve(config.build.outDir, (pluginOptions.outputPath ?? defaultOptions.outputPath) as string);
         console.log('outputDir',`${outputDir}`);
         saveSkeletonScreens(skeletonScreens, outputDir);
-        Object.keys(skeletonScreens).map(async (screen) => {
-          skeletonScreens[screen] = await compressBase64WithJimp(skeletonScreens[screen])
-        });
+        await Promise.all(Object.keys(skeletonScreens).map(async (screen) => {
+          skeletonScreens[screen] = await compressBase64WithJimp(skeletonScreens[screen]);
+          console.log('skeletonScreens compressBase64WithJimp', screen, '(done)');
+        }))
         injectSkeletonToHtml(htmlPath, skeletonScreens);
         console.log('Skeleton screens injected into index.html');
       } else {

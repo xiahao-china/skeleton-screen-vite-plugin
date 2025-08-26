@@ -1,6 +1,6 @@
 {
   "name": "skeleton-screen-vite-plugin",
-  "version": "0.0.51",
+  "version": "0.0.56",
   "description": "",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
