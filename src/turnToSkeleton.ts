@@ -3,7 +3,7 @@ import {Jimp, ResizeStrategy} from 'jimp';
 import {ISkeletonScreenDeep} from "./const";
 
 
-export async function compressBase64WithJimp(dataUrl: string, maxW=480, maxH=270,) {
+export async function compressBase64WithJimp(dataUrl: string, maxW=1920, maxH=1080,) {
     const match = /^data:(.+?);base64,(.*)$/.exec(dataUrl);
     const base64 = match ? match[2] : dataUrl;
 

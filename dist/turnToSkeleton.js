@@ -13,7 +13,7 @@ exports.compressBase64WithJimp = compressBase64WithJimp;
 exports.startTurnToSkeleton = startTurnToSkeleton;
 const jimp_1 = require("jimp");
 function compressBase64WithJimp(dataUrl_1) {
-    return __awaiter(this, arguments, void 0, function* (dataUrl, maxW = 480, maxH = 270) {
+    return __awaiter(this, arguments, void 0, function* (dataUrl, maxW = 1920, maxH = 1080) {
         const match = /^data:(.+?);base64,(.*)$/.exec(dataUrl);
         const base64 = match ? match[2] : dataUrl;
         const img = yield jimp_1.Jimp.read(Buffer.from(base64, 'base64'));

@@ -13,6 +13,7 @@ export interface SkeletonScreenOptions {
     routerPath?: string;
     outputPath?: string;
     skeletonClass?: string;
+    outputMode?: 'base64' | 'element';
 }
 // 默认选项
 export const defaultOptions: SkeletonScreenOptions = {

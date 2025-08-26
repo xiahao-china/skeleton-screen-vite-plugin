@@ -47,6 +47,7 @@ interface SkeletonScreenOptions {
    * @default 7
    */
   elDeep?: number | ISkeletonScreenDeep;
+  outputMode?: 'base64' | 'element';
 }
 
 /**
