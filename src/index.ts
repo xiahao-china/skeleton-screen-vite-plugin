@@ -7,7 +7,7 @@ import { executablePath } from 'puppeteer';
 import {DEFAULT_PORT, defaultOptions, type SkeletonScreenOptions} from './const';
 import { checkChromeAndInstall } from './envPreCheck';
 import {startStaticServer} from "./pageServer";
-
+import {compressBase64WithJimp, startTurnToSkeleton} from "./turnToSkeleton";
 
 
 
@@ -31,6 +31,11 @@ async function generateSkeletonScreens(
 ): Promise<Record<string, string>> {
   const browser = await launch({
     headless: 'new',
+    // 浏览器视窗尺寸
+    defaultViewport: {
+      width: 1920,
+      height: 1080,
+    },
     ...options.puppeteerOptions,
     executablePath: executablePath()  // 使用 puppeteer 自带的 Chrome
   });
@@ -41,42 +46,14 @@ async function generateSkeletonScreens(
   try {
     for (const route of routes) {
       console.log(`Generating skeleton screen for: ${route}`);
-      await page.goto(`${baseUrl}${route}`, { waitUntil: 'networkidle0' });
+      await page.goto(`${baseUrl}${route}?skeleton_screen_vite_plugin_deep=${(JSON.stringify(options.elDeep || defaultOptions.elDeep as number))}`, { waitUntil: 'networkidle0' });
       await page.waitForTimeout(options.delay || 2000);
-
-      // 添加骨架屏样式
-      await page.addStyleTag({
-        content: `
-          .${options.skeletonClass} * { visibility: hidden !important; }
-          .${options.skeletonClass} .skeleton-block { visibility: visible !important; background: #e0e0e0; border-radius: 4px; }
-          .${options.skeletonClass} .skeleton-text { visibility: visible !important; background: #e0e0e0; height: 16px; border-radius: 4px; }
-        `
-      });
-
-      // 为主要元素添加骨架屏类
-      await page.evaluate((skeletonClass) => {
-        const body = document.body;
-        skeletonClass && body.classList.add(skeletonClass);
-
-        // 为div、p、span等元素添加骨架屏样式（简化实现）
-        document.querySelectorAll('div, p, span, h1, h2, h3, h4, h5, h6').forEach(el => {
-          el.classList.add('skeleton-block');
-        });
-
-        document.querySelectorAll('img').forEach(img => {
-          img.style.visibility = 'hidden';
-          const skeleton = document.createElement('div');
-          skeleton.className = 'skeleton-block';
-          skeleton.style.width = img.offsetWidth + 'px';
-          skeleton.style.height = img.offsetHeight + 'px';
-          img.parentNode?.insertBefore(skeleton, img);
-        });
-      }, options.skeletonClass);
+      await startTurnToSkeleton(page);
 
       // 截图并转换为base64
       const screenshot = await page.screenshot({ type: 'png', encoding: 'base64' });
-      console.log(`route ${route}: ${screenshot}`);
-      skeletonScreens[route] = screenshot;
+      console.log(`route ${route} 生成完成`);
+      skeletonScreens[route.replace('/','').replace('#','')] = `data:image/png;base64,${screenshot}`;
     }
   } finally {
     await browser.close();
@@ -85,65 +62,36 @@ async function generateSkeletonScreens(
   return skeletonScreens;
 }
 
+function saveSkeletonScreens(skeletonScreens: Record<string, string>, outputDir: string) {
+  Object.entries(skeletonScreens).forEach(([route, base64]) => {
+    // base64压缩
+    // const compressedBase64 = compress(base64);
+    const filePath = path.join(outputDir, `${route.replace('/', 'skeleton-screen-')}.png`);
+    fs.writeFileSync(filePath, base64, 'base64');
+  });
+}
+
 // 注入骨架屏到HTML
-function injectSkeletonToHtml(
-  htmlPath: string,
-  skeletonScreens: Record<string, string>,
-  options: SkeletonScreenOptions
-) {
+function injectSkeletonToHtml(htmlPath: string, skeletonScreens: Record<string, string>) {
   let htmlContent = fs.readFileSync(htmlPath, 'utf-8');
 
-  // 创建骨架屏样式
-  const style = `
-    <style>
-      .skeleton-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; background: white; display: none; }
-      .skeleton-container.visible { display: block; }
-      .skeleton-image { width: 100%; height: 100%; object-fit: cover; }
-    </style>
-  `;
-
-  // 创建骨架屏容器
-  const containers = Object.entries(skeletonScreens)
-    .map(([route, base64]) => `
-      <div class="skeleton-container" data-route="${route}"><img src="data:image/png;base64,${base64}" class="skeleton-image" /></div>
-    `).join('\n');
-
-  // 将样式插入到head中
-  htmlContent = htmlContent.replace('</head>', `${style}</head>`);
-  
-  // 将骨架屏容器插入到body中
-  htmlContent = htmlContent.replace('</body>', `${containers}</body>`);
-  
   // 添加路由监听脚本
   const script = `
     <script>
-      // 监听路由变化显示对应骨架屏
-      function showSkeletonForRoute(route) {
-        document.querySelectorAll('.skeleton-container').forEach(container => {
-          container.classList.toggle('visible', container.dataset.route === route);
-        });
-      }
-      
-      // 初始路由
-      showSkeletonForRoute(window.location.pathname);
-      
-      // 监听hash变化 (Vue Router hash模式)
-      window.addEventListener('hashchange', () => {
-        showSkeletonForRoute(window.location.hash.replace('#', ''));
-      });
-      
-      // 监听history变化 (Vue Router history模式)
-      if (window.history && window.history.pushState) {
-        const originalPushState = window.history.pushState;
-        window.history.pushState = function(...args) {
-          originalPushState.apply(this, args);
-          showSkeletonForRoute(window.location.pathname);
-        };
-        
-        window.addEventListener('popstate', () => {
-          showSkeletonForRoute(window.location.pathname);
-        });
-      }
+      // 初始化时单次执行,获取当前路由
+      (function() {
+          var skeletonScreens = '${JSON.stringify(skeletonScreens)}';
+          var historyPath = window.location.pathname.replace('/','');
+          var hashPath = window.location.hash.replace('#', '');
+          var handlePath = hashPath || historyPath;
+          const imgEl = document.createElement('img');
+          // imgEl.src = '/assets/' + 'skeleton-screen-' + handlePath + '.png';
+          imgEl.src = JSON.parse(skeletonScreens)[handlePath];
+          imgEl.id = 'skeleton-image';
+          imgEl.style.width = '100%';
+          imgEl.style.objectFit = 'cover';
+          document.body.appendChild(imgEl);
+      })();
     </script>
   `;
   
@@ -181,12 +129,20 @@ export function init (options: Partial<SkeletonScreenOptions> = {}): Plugin {
       // 生成骨架屏
       const skeletonScreens = await generateSkeletonScreens(routes, pluginOptions);
 
+      // 关闭静态文件服务
       server.close();
 
       // 注入到HTML
       const htmlPath = path.resolve(config.build.outDir, 'index.html');
       if (fs.existsSync(htmlPath)) {
-        injectSkeletonToHtml(htmlPath, skeletonScreens, pluginOptions);
+        // 保存骨架屏图片
+        const outputDir = path.resolve(config.build.outDir, (pluginOptions.outputPath ?? defaultOptions.outputPath) as string);
+        console.log('outputDir',`${outputDir}`);
+        saveSkeletonScreens(skeletonScreens, outputDir);
+        Object.keys(skeletonScreens).map(async (screen) => {
+          skeletonScreens[screen] = await compressBase64WithJimp(skeletonScreens[screen])
+        });
+        injectSkeletonToHtml(htmlPath, skeletonScreens);
         console.log('Skeleton screens injected into index.html');
       } else {
         console.error('index.html not found in output directory');

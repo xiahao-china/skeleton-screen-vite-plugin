@@ -5,7 +5,9 @@ exports.DEFAULT_PORT = exports.defaultOptions = void 0;
 exports.defaultOptions = {
     routes: [],
     delay: 2000,
+    elDeep: 7,
     puppeteerOptions: {},
+    outputPath: 'assets',
     routerPath: 'src/router/index.ts',
     skeletonClass: 'skeleton-screen'
 };

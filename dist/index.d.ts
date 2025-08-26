@@ -1,6 +1,10 @@
 import type { Plugin } from 'vite';
 import type { LaunchOptions } from 'puppeteer';
 
+interface ISkeletonScreenDeep{
+  [routerPath: string]: number;
+}
+
 interface SkeletonScreenOptions {
   /**
    * 需要生成骨架屏的路由数组
@@ -37,6 +41,12 @@ interface SkeletonScreenOptions {
    * @default 'dist'
    */
   outputPath?: string;
+
+  /**
+   * 元素深度
+   * @default 7
+   */
+  elDeep?: number | ISkeletonScreenDeep;
 }
 
 /**
